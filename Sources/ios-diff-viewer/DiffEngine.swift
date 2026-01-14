@@ -35,4 +35,10 @@ public extension DiffEngine {
         cfg.rows.inline.tokenization = inlineTokenization
         return diff(old: old, new: new, config: cfg)
     }
+    
+    static func diffHunk(old: String, new: String, config: Config = .default, hunk: HunkBuilder.Config = .default) -> DiffHunk {
+        let result = diff(old: old, new: new, config: config)
+        return HunkBuilder.build(from: result.rows, config: hunk)
+    }
+
 }
