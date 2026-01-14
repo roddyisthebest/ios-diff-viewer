@@ -10,7 +10,17 @@ import Foundation
 
 public enum RowsBuilder {
 
-    public static func build(from changes: [Change<String>]) -> [DiffRow] {
+    public struct Config: Sendable, Equatable {
+        public var inline: InlineDiffEngine.Config
+
+        public init(inline: InlineDiffEngine.Config = .default) {
+            self.inline = inline
+        }
+
+        public static let `default` = Config()
+    }
+
+    public static func build(from changes: [Change<String>], config: Config = .default) -> [DiffRow] {
         var rows: [DiffRow] = []
         rows.reserveCapacity(changes.reduce(0) { $0 + $1.values.count })
 
@@ -25,12 +35,15 @@ public enum RowsBuilder {
 
             let pairs = min(pendingDeletes.count, pendingInserts.count)
 
-            // modify pairs (zip)
             if pairs > 0 {
                 for k in 0..<pairs {
-                    let left = SideLine(number: oldLineNo, text: pendingDeletes[k])
-                    let right = SideLine(number: newLineNo, text: pendingInserts[k])
-                    let inline = InlineDiffEngine.diff(old: pendingDeletes[k], new: pendingInserts[k])
+                    let leftText = pendingDeletes[k]
+                    let rightText = pendingInserts[k]
+
+                    let left = SideLine(number: oldLineNo, text: leftText)
+                    let right = SideLine(number: newLineNo, text: rightText)
+
+                    let inline = InlineDiffEngine.diff(old: leftText, new: rightText, config: config.inline)
 
                     rows.append(DiffRow(left: left, right: right, relation: .modify, inline: inline))
                     oldLineNo += 1
@@ -38,7 +51,6 @@ public enum RowsBuilder {
                 }
             }
 
-            // leftover deletes
             if pendingDeletes.count > pairs {
                 for s in pendingDeletes[pairs...] {
                     let left = SideLine(number: oldLineNo, text: s)
@@ -47,7 +59,6 @@ public enum RowsBuilder {
                 }
             }
 
-            // leftover inserts
             if pendingInserts.count > pairs {
                 for s in pendingInserts[pairs...] {
                     let right = SideLine(number: newLineNo, text: s)

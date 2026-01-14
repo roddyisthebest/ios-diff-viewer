@@ -67,3 +67,21 @@ func rows_modify_has_inline() {
     #expect(rows[0].relation == .modify)
     #expect(rows[0].inline != nil)
 }
+
+
+@Test
+func diffEngine_passes_inline_tokenization_to_rowsBuilder() {
+    let old = "let count = 10"
+    let new = "let count = 12"
+
+    let res = DiffEngine.diff(old: old, new: new, inlineTokenization: .words)
+
+    // find modify row
+    let m = res.rows.first(where: { $0.relation == .modify })
+    #expect(m != nil)
+    #expect(m?.inline != nil)
+    #expect(m?.inline?.isTruncated == false)
+    // tokenization is internal, but we can at least check the text reconstructs
+    #expect(m?.inline?.old.map(\.text).joined() == old)
+    #expect(m?.inline?.new.map(\.text).joined() == new)
+}
