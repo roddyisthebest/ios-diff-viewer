@@ -55,3 +55,15 @@ func myers_middle_insertion_keeps_tail_equals() {
     #expect(sig.contains("E(b)"))
     #expect(sig.contains("E(c)"))
 }
+
+@Test
+func rows_modify_has_inline() {
+    let changes: [Change<String>] = [
+        .init(kind: .delete, values: ["bbba"]),
+        .init(kind: .insert, values: ["b"])
+    ]
+    let rows = RowsBuilder.build(from: changes)
+    #expect(rows.count == 1)
+    #expect(rows[0].relation == .modify)
+    #expect(rows[0].inline != nil)
+}

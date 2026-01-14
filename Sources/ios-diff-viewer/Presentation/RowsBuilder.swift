@@ -30,7 +30,9 @@ public enum RowsBuilder {
                 for k in 0..<pairs {
                     let left = SideLine(number: oldLineNo, text: pendingDeletes[k])
                     let right = SideLine(number: newLineNo, text: pendingInserts[k])
-                    rows.append(DiffRow(left: left, right: right, relation: .modify))
+                    let inline = InlineDiffEngine.diff(old: pendingDeletes[k], new: pendingInserts[k])
+
+                    rows.append(DiffRow(left: left, right: right, relation: .modify, inline: inline))
                     oldLineNo += 1
                     newLineNo += 1
                 }

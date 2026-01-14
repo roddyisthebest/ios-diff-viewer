@@ -18,10 +18,14 @@ public struct DiffRow: Sendable, Equatable {
     public let left: SideLine?
     public let right: SideLine?
     public let relation: DiffRowRelation
+    
+    public let inline: InlineDiff?
 
-    public init(left: SideLine?, right: SideLine?, relation: DiffRowRelation) {
+
+    public init(left: SideLine?, right: SideLine?, relation: DiffRowRelation, inline: InlineDiff? = nil) {
         self.left = left
         self.right = right
         self.relation = relation
+        self.inline = inline
     }
 }
