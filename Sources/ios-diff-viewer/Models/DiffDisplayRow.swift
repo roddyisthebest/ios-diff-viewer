@@ -10,7 +10,7 @@ import Foundation
 public enum DiffDisplayRow: Sendable, Equatable {
     case row(DiffRow)
 
-    /// Collapsed unchanged section (equal rows).
-    /// oldCount/newCount are the number of lines hidden on each side.
-    case omitted(oldCount: Int, newCount: Int)
+    /// Collapsed unchanged section (equal rows) from the original rows.
+    /// - range: hidden rows index range in original `DiffRow[]` (half-open)
+    case omitted(range: Range<Int>, oldCount: Int, newCount: Int)
 }

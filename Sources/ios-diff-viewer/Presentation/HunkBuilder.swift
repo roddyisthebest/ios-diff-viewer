@@ -27,13 +27,11 @@ public enum HunkBuilder {
     /// Build a single hunk-like display stream from full diff rows.
     /// (Later you can split into multiple hunks if you want.)
     public static func build(from rows: [DiffRow], config: Config = .default) -> DiffHunk {
-        // If no changes, show everything (or you can fold all, up to you)
         let hasChange = rows.contains { $0.relation != .equal }
         if !hasChange {
-            return DiffHunk(rows: rows.map(DiffDisplayRow.row))
+            return DiffHunk(sourceRows: rows, rows: rows.map(DiffDisplayRow.row))
         }
 
-        // Mark which indices should be visible (changes + surrounding context)
         let n = rows.count
         var visible = Array(repeating: false, count: n)
 
@@ -43,7 +41,6 @@ public enum HunkBuilder {
             for k in start...end { visible[k] = true }
         }
 
-        // Build display rows: visible rows as-is, invisible equal runs collapsed
         var out: [DiffDisplayRow] = []
         out.reserveCapacity(n)
 
@@ -55,7 +52,6 @@ public enum HunkBuilder {
                 continue
             }
 
-            // invisible segment: should be all equals (by construction)
             let start = i
             var oldCount = 0
             var newCount = 0
@@ -64,40 +60,42 @@ public enum HunkBuilder {
                 if rows[i].relation == .equal {
                     oldCount += 1
                     newCount += 1
+                    i += 1
                 } else {
-                    // Safety: if something non-equal slipped in, show it.
                     break
                 }
-                i += 1
             }
 
             let runLen = i - start
             if runLen <= config.smallEqualRunThreshold {
-                // too small: just show them
                 for k in start..<i { out.append(.row(rows[k])) }
             } else {
-                out.append(.omitted(oldCount: oldCount, newCount: newCount))
+                out.append(.omitted(range: start..<i, oldCount: oldCount, newCount: newCount))
             }
         }
 
-        // Coalesce adjacent omitted blocks (just in case)
         out = coalesceOmitted(out)
-        return DiffHunk(rows: out)
+        return DiffHunk(sourceRows: rows, rows: out)
     }
+
 
     private static func coalesceOmitted(_ rows: [DiffDisplayRow]) -> [DiffDisplayRow] {
         var out: [DiffDisplayRow] = []
         out.reserveCapacity(rows.count)
 
         for r in rows {
-            if case .omitted(let o1, let n1) = r,
+            if case .omitted(let r1, let o1, let n1) = r,
                let last = out.last,
-               case .omitted(let o0, let n0) = last {
-                out[out.count - 1] = .omitted(oldCount: o0 + o1, newCount: n0 + n1)
+               case .omitted(let r0, let o0, let n0) = last,
+               r0.upperBound == r1.lowerBound {
+                out[out.count - 1] = .omitted(range: r0.lowerBound..<r1.upperBound,
+                                              oldCount: o0 + o1,
+                                              newCount: n0 + n1)
             } else {
                 out.append(r)
             }
         }
         return out
     }
+
 }
