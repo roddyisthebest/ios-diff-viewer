@@ -9,18 +9,27 @@ import Foundation
 public enum InlineDiffEngine {
 
     public struct Config: Sendable, Equatable {
-        public var maxCharsPerLine: Int
+        /// Hard cap by token count (not characters). Prevents big DP.
+        public var maxTokensPerLine: Int
+        /// DP cell cap: (n+1)*(m+1)
         public var maxDpCells: Int
+        /// Tokenization strategy
+        public var tokenization: InlineTokenization
 
-        public init(maxCharsPerLine: Int = 4_000, maxDpCells: Int = 8_000_000) {
-            self.maxCharsPerLine = maxCharsPerLine
+        public init(
+            maxTokensPerLine: Int = 4_000,
+            maxDpCells: Int = 8_000_000,
+            tokenization: InlineTokenization = .characters
+        ) {
+            self.maxTokensPerLine = maxTokensPerLine
             self.maxDpCells = maxDpCells
+            self.tokenization = tokenization
         }
 
         public static let `default` = Config()
     }
 
-    private enum Edit { case eq(Character), del(Character), ins(Character) }
+    private enum Edit { case eq(String), del(String), ins(String) }
 
     public static func diff(old: String, new: String, config: Config = .default) -> InlineDiff {
         if old == new {
@@ -28,10 +37,10 @@ public enum InlineDiffEngine {
             return InlineDiff(old: old.isEmpty ? [] : [p], new: new.isEmpty ? [] : [p], isTruncated: false)
         }
 
-        let a = Array(old)
-        let b = Array(new)
+        let a = InlineTokenizer.tokenize(old, mode: config.tokenization)
+        let b = InlineTokenizer.tokenize(new, mode: config.tokenization)
 
-        if a.count > config.maxCharsPerLine || b.count > config.maxCharsPerLine {
+        if a.count > config.maxTokensPerLine || b.count > config.maxTokensPerLine {
             return fallback(old: old, new: new)
         }
 
@@ -47,6 +56,7 @@ public enum InlineDiffEngine {
             return InlineDiff(old: [InlinePiece(kind: .delete, text: old)], new: [], isTruncated: false)
         }
 
+        // LCS DP over tokens
         var dp = Array(repeating: Array(repeating: 0, count: b.count + 1), count: a.count + 1)
         for i in 1...a.count {
             for j in 1...b.count {
@@ -93,23 +103,24 @@ public enum InlineDiffEngine {
         oldPieces.reserveCapacity(edits.count / 2 + 1)
         newPieces.reserveCapacity(edits.count / 2 + 1)
 
-        func append(_ arr: inout [InlinePiece], kind: InlinePieceKind, ch: Character) {
+        func append(_ arr: inout [InlinePiece], kind: InlinePieceKind, text: String) {
+            guard !text.isEmpty else { return }
             if let last = arr.last, last.kind == kind {
-                arr[arr.count - 1] = InlinePiece(kind: kind, text: last.text + String(ch))
+                arr[arr.count - 1] = InlinePiece(kind: kind, text: last.text + text)
             } else {
-                arr.append(InlinePiece(kind: kind, text: String(ch)))
+                arr.append(InlinePiece(kind: kind, text: text))
             }
         }
 
         for e in edits {
             switch e {
-            case .eq(let ch):
-                append(&oldPieces, kind: .equal, ch: ch)
-                append(&newPieces, kind: .equal, ch: ch)
-            case .del(let ch):
-                append(&oldPieces, kind: .delete, ch: ch)
-            case .ins(let ch):
-                append(&newPieces, kind: .insert, ch: ch)
+            case .eq(let t):
+                append(&oldPieces, kind: .equal, text: t)
+                append(&newPieces, kind: .equal, text: t)
+            case .del(let t):
+                append(&oldPieces, kind: .delete, text: t)
+            case .ins(let t):
+                append(&newPieces, kind: .insert, text: t)
             }
         }
 
