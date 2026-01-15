@@ -23,7 +23,8 @@ public enum DiffEngine {
 
     public static func diff(old: String, new: String, config: Config = .default) -> DiffResult {
         let changes = LineDiffEngine.diffLines(old: old, new: new, config: config.line)
-        let rows = RowsBuilder.build(from: changes, config: config.rows)
+        let aligned = ModifyAligner.align(changes)
+        let rows = DiffRowBuilder.build(from: aligned, config: .init(inline: config.rows.inline))
         return DiffResult(rows: rows)
     }
 }
