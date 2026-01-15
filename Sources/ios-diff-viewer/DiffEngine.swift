@@ -11,9 +11,9 @@ public enum DiffEngine {
 
     public struct Config: Sendable, Equatable {
         public var line: LineDiffEngine.Config
-        public var rows: RowsBuilder.Config
+        public var rows: DiffRowsBuilder.Config
 
-        public init(line: LineDiffEngine.Config = .default, rows: RowsBuilder.Config = .default) {
+        public init(line: LineDiffEngine.Config = .default, rows: DiffRowsBuilder.Config = .default) {
             self.line = line
             self.rows = rows
         }
@@ -24,7 +24,7 @@ public enum DiffEngine {
     public static func diff(old: String, new: String, config: Config = .default) -> DiffResult {
         let changes = LineDiffEngine.diffLines(old: old, new: new, config: config.line)
         let aligned = ModifyAligner.align(changes)
-        let rows = DiffRowBuilder.build(from: aligned, config: .init(inline: config.rows.inline))
+        let rows = DiffRowsBuilder.build(from: aligned, config: .init(inline: config.rows.inline))
         return DiffResult(rows: rows)
     }
 }

@@ -1,5 +1,5 @@
 //
-//  DiffRowBuilder.swift
+//  DiffRowsBuilder.swift
 //  ios-diff-viewer
 //
 //  Created by 배성연 on 1/15/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum DiffRowBuilder {
+public enum DiffRowsBuilder {
 
     public struct Config: Sendable, Equatable {
         public var inline: InlineDiffEngine.Config
